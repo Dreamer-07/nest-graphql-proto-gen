@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package article;
+
+import "common.proto";
+
+option java_package = "pers.prover07.y.mblog.proto";
+
+option java_outer_classname = "ArticleProto";
+
+option java_multiple_files = false;
+
+service ArticleRpcService {
+  rpc ArticleIdLikedListQuery (ArticleIdLikedListQueryReq) returns (ArticleIdList);
+  rpc ArticleListQuery (ArticleQueryReq) returns (ArticleList);
+  rpc ArticleDetailQuery (ArticleQueryDetailReq) returns (Article);
+  rpc ArticleCreate (ArticleCreateReq) returns (ArticleCreateRes);
+  rpc ArticleUpdate (ArticleUpdateReq) returns (common.CommonRes);
+  rpc ArticleUpdateLikeCount (ArticleUpdateLikeCountReq) returns (common.CommonRes);
+  rpc ArticleUpdateViewCount (ArticleUpdateViewCountReq) returns (common.CommonRes);
+  rpc ArticleUpdateShareCount (ArticleUpdateShareCountReq) returns (common.CommonRes);
+  rpc ArticleDel (ArticleDelReq) returns (common.CommonRes);
+}
+
+message ArticleIdLikedListQueryReq {
+  string userId = 1;
+}
+
+message ArticleIdList {
+  repeated string articleIdList = 1;
+}
+
+message ArticleList {
+  int64 pageNo = 1;
+  int64 pageSize = 2;
+  int64 totalPages = 3;
+  int64 totalCount = 4;
+  repeated Article articleList = 5;
+}
+
+message Article {
+  string id = 1;
+  string articleId = 2;
+  string title = 3;
+  string subTitle = 4;
+  string excerpt = 5;
+  string backgroundUrl = 6;
+  int32 viewCount = 7;
+  int32 likeCount = 8;
+  int32 shareCount = 9;
+  int32 isTop = 10;
+  int32 isDeleted = 11;
+  string gistId = 12;
+  int64 createTime = 14;
+  int64 updateTime = 15;
+}
+
+message ArticleQueryReq {
+  optional string title = 1;
+  optional int32 pageNo = 2;
+  optional int32 pageSize = 3;
+  optional ArticleSortType sortType = 4;
+  optional string categoryId = 5;
+}
+
+message ArticleQueryDetailReq {
+  optional string articleId = 1;
+  optional string gistId = 2;
+}
+
+message ArticleCreateReq {
+  string title = 3;
+  string subTitle = 4;
+  string excerpt = 5;
+  string backgroundUrl = 6;
+  optional int32 isTop = 10;
+  string gistId = 12;
+}
+
+message ArticleCreateRes {
+  string articleId = 1;
+}
+
+message ArticleUpdateReq {
+  string id = 1;
+  optional string title = 3;
+  optional string subTitle = 4;
+  optional string excerpt = 5;
+  optional string backgroundUrl = 6;
+  optional int32 isTop = 10;
+}
+
+message ArticleUpdateLikeCountReq {
+  string articleId = 1;
+}
+
+message ArticleUpdateViewCountReq {
+  string articleId = 1;
+}
+
+message ArticleUpdateShareCountReq {
+  string articleId = 1;
+}
+
+message ArticleDelReq {
+  string id = 1;
+}
+
+enum ArticleSortType {
+  ARTICLE_SORT_TYPE_CREATE_TIME = 0;
+  ARTICLE_SORT_TYPE_LIKE_COUNT = 1;
+}
