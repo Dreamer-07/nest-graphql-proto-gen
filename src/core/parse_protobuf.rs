@@ -6,13 +6,22 @@ pub mod parse_protobuf {
     use std::path::PathBuf;
 
     use regex::Regex;
+    use serde::Serialize;
+    use structopt::lazy_static::lazy_static;
 
-    #[derive(Debug)]
+    lazy_static! {
+        pub static ref STRING_TYPE: Vec<&'static str> = vec!["int64", "fixed64", "uint64", "sfixed64", "sint64", "string"];
+        pub static ref NUMBER_TYPE: Vec<&'static str> = vec!["double", "float", "int32", "fixed32", "uint32", "sfixed32", "sint32"];
+        pub static ref BOOLEAN_TYPE: Vec<&'static str> = vec!["bool"];
+        pub static ref UINT8ARRAY: Vec<&'static str> = vec!["bytes"];
+    }
+
+    #[derive(Debug, Serialize)]
     pub struct MessageField {
-        name: String,
-        field: String,
-        optional: bool,
-        repeated: bool,
+        pub name: String,
+        pub field: String,
+        pub optional: bool,
+        pub repeated: bool,
     }
 
     impl MessageField {
@@ -21,10 +30,10 @@ pub mod parse_protobuf {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Serialize)]
     pub struct EnumField {
-        name: String,
-        value: u32,
+        pub name: String,
+        pub value: u32,
     }
 
     impl EnumField {
@@ -35,8 +44,8 @@ pub mod parse_protobuf {
 
     #[derive(Debug)]
     pub struct ProtoBuf {
-        messages: HashMap<String, Vec<MessageField>>,
-        enums: HashMap<String, Vec<EnumField>>,
+        pub messages: HashMap<String, (String, Vec<MessageField>)>,
+        pub enums: HashMap<String, (String, Vec<EnumField>)>,
     }
 
     impl ProtoBuf {
@@ -50,7 +59,7 @@ pub mod parse_protobuf {
 
     fn parse_message(data: &str) -> Result<MessageField, String> {
         // 切割字符串
-        let mut parts = data.split_whitespace().collect::<Vec<_>>();
+        let parts = data.split_whitespace().collect::<Vec<_>>();
         if parts.len() < 2 {
             return Err(format!("invalid data {}", data));
         }
@@ -64,7 +73,7 @@ pub mod parse_protobuf {
         } else {
             0
         };
-        let field_type = parts[field_type_idx];
+        let field_type = get_ts_type(parts[field_type_idx]).unwrap_or(parts[field_type_idx]);
         let field_name = parts[field_type_idx + 1];
 
         Ok(MessageField::new(field_name.to_string(), field_type.to_string(), optional, repeated))
@@ -72,7 +81,7 @@ pub mod parse_protobuf {
 
     fn parse_enum(data: &str) -> Result<EnumField, String> {
         // 切割字符串
-        let mut parts = data.split("=").collect::<Vec<_>>();
+        let parts = data.split("=").collect::<Vec<_>>();
         if parts.len() < 1 {
             return Err(format!("invalid data {}", data));
         }
@@ -98,25 +107,39 @@ pub mod parse_protobuf {
                 let message_captures = message_re.captures(trimmed_line).unwrap().get(1);
                 let message_name = message_captures.map_or("", |m| m.as_str());
                 messages_stack.push((message_name.to_string(), 0));
-                proto_buf.messages.insert(message_name.to_string(), Vec::new());
+                proto_buf.messages.insert(message_name.to_string(), (message_name.to_string(), Vec::new()));
             } else if trimmed_line.starts_with("enum") {
                 let enum_captures = enum_re.captures(trimmed_line).unwrap().get(1);
                 let enum_name = enum_captures.map_or("", |m| m.as_str());
                 messages_stack.push((enum_name.to_string(), 1));
-                proto_buf.enums.insert(enum_name.to_string(), Vec::new());
+                proto_buf.enums.insert(enum_name.to_string(), (enum_name.to_string(), Vec::new()));
             } else if trimmed_line.starts_with("}") {
                 messages_stack.pop();
             } else if !messages_stack.is_empty() {
                 let (data_name, data_type) = messages_stack.last().unwrap();
                 if *data_type == 0 {
-                    proto_buf.messages.get_mut(data_name).unwrap().push(parse_message(trimmed_line).unwrap());
+                    proto_buf.messages.get_mut(data_name).unwrap().1.push(parse_message(trimmed_line).unwrap());
                 } else {
-                    proto_buf.enums.get_mut(data_name).unwrap().push(parse_enum(trimmed_line).unwrap())
+                    proto_buf.enums.get_mut(data_name).unwrap().1.push(parse_enum(trimmed_line).unwrap());
                 }
             }
         }
 
         Ok(proto_buf)
+    }
+
+    fn get_ts_type(proto_type: &str) -> Result<&str, &'static str> {
+        Ok(if STRING_TYPE.contains(&proto_type) {
+            "string"
+        } else if NUMBER_TYPE.contains(&proto_type) {
+            "number"
+        } else if BOOLEAN_TYPE.contains(&proto_type) {
+            "boolean"
+        } else if UINT8ARRAY.contains(&proto_type) {
+            "Uint8Array"
+        } else {
+            return Err("unknown proto type");
+        })
     }
 }
 

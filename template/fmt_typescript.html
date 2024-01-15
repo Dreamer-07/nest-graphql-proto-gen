@@ -1,0 +1,26 @@
+import * as g from '@nestjs/graphql';
+
+{% for enum_item in enums %}
+{% set enum_name = enum_item[0] %}
+enum {{ enum_name }} {
+  {% for detail in enum_item[1] %}
+    {{ detail.name }} = {{ detail.value }},
+  {% endfor %}
+}
+
+g.registerEnumType({{ enum_name }}, {
+    name: '{{ enum_name }}',
+});
+
+{% endfor %}
+
+{% for message_item in messages %}
+@g.ObjectType()
+export class {{ message_item[0] }} {
+  {% for message_info in message_item[1] %}
+    @g.Field() {{ message_info['name'] }}: {{ message_info['field'] }};
+  {% endfor %}
+}
+{% endfor %}
+
+
